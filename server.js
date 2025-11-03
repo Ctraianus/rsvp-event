@@ -96,7 +96,7 @@ app.post("/api/sendEmails", async (req, res) => {
   let sent = 0;
 
   for (const { email, name } of recipients) {
-    const company = "Ambasada României la New Delhi";
+    const company = "Embassy of Romania to India";
     const qrText = `Event: ${ev.titlu}\nDate: ${ev.data}\nCompany: ${company}\nName: ${name}`;
     
     // ✅ Generate QR as buffer
@@ -111,12 +111,13 @@ app.post("/api/sendEmails", async (req, res) => {
         <img src="https://newdelhi.mae.ro/sites/all/themes/mae_ek/images/logo.png"
              alt="Logo" style="max-width:140px;margin-bottom:20px;display:block;margin-left:auto;margin-right:auto;">
         <h2 style="font-family:'Brush Script MT','Lucida Handwriting',cursive;font-size:28px;color:#1a1a1a;margin-bottom:16px;">
-          Invitation to ${ev.titlu}
+          On the occasion of the ${ev.titlu}
         </h2>
-        <p style="font-size:16px;color:#444;margin-bottom:10px;"><strong>Date:</strong> ${ev.data}</p>
-        <p style="font-size:16px;color:#444;margin-bottom:20px;"><strong>Location:</strong> ${ev.locatie || 'TBA'}</p>
+      <!--  <p style="font-size:16px;color:#444;margin-bottom:10px;"><strong>Date:</strong> ${ev.data}</p>
+        <p style="font-size:16px;color:#444;margin-bottom:20px;"><strong>Location:</strong> ${ev.locatie}</p> -->
+        <p style="font-size:20px;color:#444;margin-bottom:20px;margin-top:20px;"><strong></strong> ${company}</p>
 
-        <div style="text-align:left;padding:10px 25px;">
+        <div style="text-align:left;padding:10px 25px;text-align:center;">
           ${message.replace(/{{\s*name\s*}}/gi, name).replace(/\n/g, "<br>")}
         </div>
 
@@ -130,8 +131,8 @@ app.post("/api/sendEmails", async (req, res) => {
         </div>
 
         <div style="margin-top:30px;">
-          <a href="${confirmUrl}" style="background:#2e7d32;color:#fff;text-decoration:none;padding:10px 20px;border-radius:5px;margin:5px;">Confirm attendance</a>
-          <a href="${declineUrl}" style="background:#c62828;color:#fff;text-decoration:none;padding:10px 20px;border-radius:5px;margin:5px;">Regretfully decline</a>
+          <a href="${confirmUrl}" style="background:#2e7d32;color:#fff;text-decoration:none;padding:10px 20px;border-radius:5px;margin:5px;">Confirm</a>
+          <a href="${declineUrl}" style="background:#c62828;color:#fff;text-decoration:none;padding:10px 20px;border-radius:5px;margin:5px;">Regrets</a>
         </div>
       </div>
     `;
