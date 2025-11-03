@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Responses</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 min-h-screen">
+  <nav class="bg-blue-600 text-white p-4 flex justify-between">
+    <h1 class="text-xl font-semibold">Invitation Responses</h1>
+    <div class="space-x-4">
+      <a href="guests.html" class="hover:underline">Companies</a>
+      <a href="events.html" class="hover:underline">Events</a>
+      <a href="send.html" class="hover:underline">Send Invitations</a>
+    </div>
+  </nav>
+
+  <main class="p-6">
+    <div class="flex flex-wrap gap-4 mb-6">
+      <div>
+        <label class="block text-gray-700 mb-1">Filter by Event</label>
+        <select id="filterEvent" class="border p-2 rounded w-48">
+          <option value="">All Events</option>
+        </select>
+      </div>
+
+      <div>
+        <label class="block text-gray-700 mb-1">Filter by Company</label>
+        <select id="filterCompany" class="border p-2 rounded w-48">
+          <option value="">All Companies</option>
+        </select>
+      </div>
+
+      <div>
+        <label class="block text-gray-700 mb-1">Filter by Response</label>
+        <select id="filterResponse" class="border p-2 rounded w-48">
+          <option value="">All Responses</option>
+          <option value="confirmed">Confirmed</option>
+          <option value="declined">Declined</option>
+        </select>
+      </div>
+    </div>
+
+    <table class="w-full bg-white shadow rounded-xl overflow-hidden">
+      <thead class="bg-gray-200 text-gray-700">
+        <tr>
+          <th class="text-left p-3">Name</th>
+          <th class="text-left p-3">Company</th>
+          <th class="text-left p-3">Event</th>
+          <th class="text-left p-3">Response</th>
+          <th class="text-left p-3">Date</th>
+        </tr>
+      </thead>
+      <tbody id="responseTable" class="divide-y divide-gray-200"></tbody>
+    </table>
+  </main>
+
+ <script>
+  const table = document.getElementById("responseTable");
+  let events = [];
+
+  async function loadEvents() {
+    try {
+      const res = await fetch("/api/events");
+      events = await res.json();
+    } catch (err) {
+      console.error("Error loading events:", err);
+      events = [];
+    }
+  }
+
+  async function loadResponses() {
+    try {
+      const res = await fetch("/api/responses");
+      const data = await res.json();
+
+      // Build eventId → title map
+      const eventMap = {};
+      events.forEach(ev => {
+        eventMap[ev.id] = ev.titlu || ev.name || "(No Title)";
+      });
+
+      table.innerHTML = data.map(r => {
+        const eventTitle = eventMap[r.eventId] || "(Unknown Event)";
+        const status = (r.status || "").toLowerCase();
+        const color =
+          status === "confirmed" ? "bg-green-500" :
+          status === "declined"  ? "bg-red-500"   :
+                                   "bg-gray-400";
+
+        return `
+          <tr>
+            <td class="p-3">${r.person || ""}</td>
+            <td class="p-3">${r.company || ""}</td>
+            <td class="p-3">${eventTitle}</td>
+            <td class="p-3">
+              <span class="px-2 py-1 rounded text-white ${color}">
+                ${status || ""}
+              </span>
+            </td>
+            <td class="p-3 text-gray-500">${r.date || ""}</td>
+          </tr>
+        `;
+      }).join("");
+    } catch (err) {
+      console.error("Error loading responses:", err);
+    }
+  }
+
+  // Load both before rendering
+  (async function init() {
+    await loadEvents();
+    await loadResponses();
+  })();
+</script>
+
+</body>
+</html>

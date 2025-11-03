@@ -1,0 +1,106 @@
+[
+  {
+    "id": "1762024704662",
+    "companie": "Ambasada Romaniei la New Delhi",
+    "adresa": "3/6 Shanti Niketan New Delhi India",
+    "telefon": "+91202020205",
+    "email": "newdelhi@mae.ro",
+    "persoane": [
+      {
+        "id": "p-mhh5zp0c-2g36",
+        "nume": "H.E. Sena Latif",
+        "functie": "Ambassador",
+        "email": "sena.latif@mae.ro",
+        "activ": false
+      },
+      {
+        "id": "p-mhh615ez-96sh",
+        "nume": "Andreea Cenan",
+        "functie": "The Boss",
+        "email": "cenanandreea.ac@gmail.com",
+        "activ": false
+      },
+      {
+        "id": "1762066706863",
+        "functie": "admin",
+        "nume": "Traianus Cenan",
+        "email": "ctraianus@gmail.com",
+        "activ": true,
+        "sent": true,
+        "status": "declined"
+      }
+    ]
+  },
+  {
+    "id": "1762056640760",
+    "companie": "Embassy of France in India",
+    "adresa": "New Delhi",
+    "telefon": "+913434343431",
+    "email": "france@france.fr",
+    "persoane": [
+      {
+        "id": "1762098670265",
+        "nume": "H.E. Ambassador",
+        "functie": "",
+        "email": "",
+        "activ": false
+      }
+    ]
+  },
+  {
+    "id": "1762070775107",
+    "companie": "Embassy of Germany in India",
+    "adresa": "New Delhi",
+    "telefon": "+913434343430",
+    "email": "berlin@germany.ge",
+    "persoane": [
+      {
+        "id": "1762098681613",
+        "nume": "H.E. Ambassador",
+        "functie": "",
+        "email": "",
+        "activ": false
+      }
+    ]
+  },
+  {
+    "id": "1762098538203",
+    "companie": "Embassy of Spain in India",
+    "adresa": "New Delhi",
+    "telefon": "+912020202055",
+    "email": "spain@mail.es",
+    "persoane": [
+      {
+        "id": "1762100168439",
+        "nume": "H.E. Ambassador",
+        "functie": "",
+        "email": "",
+        "activ": false
+      }
+    ]
+  },
+  {
+    "id": "1762098578278",
+    "companie": "Embassy of Moldova in India",
+    "adresa": "New Delhi",
+    "telefon": "",
+    "email": "",
+    "persoane": []
+  },
+  {
+    "id": "1762098624907",
+    "companie": "Embassy of Italy in India",
+    "adresa": "New Delhi",
+    "telefon": "+912020205550",
+    "email": "italia@mail.it",
+    "persoane": [
+      {
+        "id": "1762100993802",
+        "nume": "H.E. Ambassador",
+        "functie": "",
+        "email": "",
+        "activ": false
+      }
+    ]
+  }
+]

@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Manage Guests</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 min-h-screen">
+  <nav class="bg-blue-600 text-white p-4 flex justify-between">
+    <h1 class="text-xl font-semibold">Guest Management</h1>
+    <div class="space-x-4">
+      <a href="events.html" class="hover:underline">Events</a>
+      <a href="responses.html" class="hover:underline">Responses</a>
+      <a href="send.html" class="hover:underline">Send Invitations</a>
+    </div>
+  </nav>
+
+  <main class="p-6">
+    <div class="flex justify-between items-center mb-4">
+      <h2 class="text-2xl font-bold text-gray-800">Companies</h2>
+      <button id="addCompanyBtn" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">
+        + Add Company
+      </button>
+    </div>
+
+    <div id="companyList" class="grid gap-6 md:grid-cols-2 lg:grid-cols-3"></div>
+  </main>
+
+  <!-- Modal for Company -->
+  <div id="modal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+    <div class="bg-white rounded-lg p-6 w-96 shadow-lg">
+      <h3 id="modalTitle" class="text-xl font-bold mb-4">Add Company</h3>
+      <form id="modalForm" class="space-y-3">
+        <input type="text" id="companie" placeholder="Company Name" class="w-full border p-2 rounded" required />
+        <input type="text" id="adresa" placeholder="Address" class="w-full border p-2 rounded" />
+        <input type="text" id="telefon" placeholder="Phone" class="w-full border p-2 rounded" />
+        <input type="email" id="email" placeholder="Email" class="w-full border p-2 rounded" />
+        <button type="submit" class="w-full bg-blue-500 text-white p-2 rounded hover:bg-blue-600">Save</button>
+        <button type="button" id="cancelBtn" class="w-full bg-gray-200 p-2 rounded hover:bg-gray-300">Cancel</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal for Person -->
+  <div id="personModal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+    <div class="bg-white rounded-lg p-6 w-96 shadow-lg">
+      <h3 id="personModalTitle" class="text-xl font-bold mb-4">Add Person</h3>
+      <form id="personForm" class="space-y-3">
+        <input type="text" id="personName" placeholder="Name" class="w-full border p-2 rounded" required />
+        <input type="text" id="personRole" placeholder="Role" class="w-full border p-2 rounded" />
+        <input type="email" id="personEmail" placeholder="Email" class="w-full border p-2 rounded" />
+        <div class="flex items-center space-x-2">
+          <input type="checkbox" id="personActive" class="h-4 w-4" checked />
+          <label for="personActive" class="text-sm text-gray-700">Active</label>
+        </div>
+        <button type="submit" class="w-full bg-blue-500 text-white p-2 rounded hover:bg-blue-600">Save</button>
+        <button type="button" id="personCancelBtn" class="w-full bg-gray-200 p-2 rounded hover:bg-gray-300">Cancel</button>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    const companyList = document.getElementById("companyList");
+    const modal = document.getElementById("modal");
+    const modalForm = document.getElementById("modalForm");
+    const modalTitle = document.getElementById("modalTitle");
+    const cancelBtn = document.getElementById("cancelBtn");
+    const addCompanyBtn = document.getElementById("addCompanyBtn");
+
+    // Person modal elements
+    const personModal = document.getElementById("personModal");
+    const personModalTitle = document.getElementById("personModalTitle");
+    const personForm = document.getElementById("personForm");
+    const personCancelBtn = document.getElementById("personCancelBtn");
+
+    let companies = [];
+    let editCompanyId = null;
+    let currentCompanyId = null;
+    let editPersonId = null;
+
+    async function loadCompanies() {
+      const res = await fetch("/api/guests");
+      companies = await res.json();
+      renderCompanies();
+    }
+
+    function renderCompanies() {
+      companyList.innerHTML = companies.map(c => `
+        <div class="bg-white p-4 rounded-xl shadow">
+          <div class="flex justify-between items-center mb-2">
+            <h3 class="text-lg font-semibold">${c.companie}</h3>
+            <div class="space-x-2">
+              <button onclick="editCompany('${c.id}')" class="text-blue-600 hover:underline">Edit</button>
+              <button onclick="deleteCompany('${c.id}')" class="text-red-600 hover:underline">Delete</button>
+            </div>
+          </div>
+          <p class="text-sm text-gray-500">${c.adresa || ""}</p>
+          <p class="text-sm text-gray-500">${c.email || ""}</p>
+          <p class="text-sm text-gray-500 mb-2">${c.telefon || ""}</p>
+
+          <div>
+            <h4 class="font-semibold mb-1">People</h4>
+            <div class="space-y-1">
+              ${(c.persoane || []).map(p => `
+                <div class="flex justify-between items-center border-b py-1">
+                  <div>
+                    <span class="font-medium">${p.nume}</span> – ${p.functie || ""}
+                    <div class="text-xs text-gray-500">${p.email}</div>
+                  </div>
+                  <div class="flex items-center space-x-2">
+                    <button onclick="toggleActive('${c.id}','${p.id}')" title="Toggle Active" class="text-sm">
+                      ${p.activ ? '🟢' : '🔴'}
+                    </button>
+                    <button onclick="openEditPerson('${c.id}','${p.id}')" class="text-blue-500 text-sm">✏️</button>
+                    <button onclick="deletePerson('${c.id}','${p.id}')" class="text-red-500 text-sm">🗑️</button>
+                  </div>
+                </div>
+              `).join("")}
+            </div>
+            <button onclick="openAddPerson('${c.id}')" class="mt-2 text-sm text-blue-600 hover:underline">+ Add Person</button>
+          </div>
+        </div>
+      `).join("");
+    }
+
+    // === Company modal ===
+    addCompanyBtn.onclick = () => {
+      editCompanyId = null;
+      modalTitle.textContent = "Add Company";
+      modalForm.reset();
+      modal.classList.remove("hidden");
+    };
+    cancelBtn.onclick = () => modal.classList.add("hidden");
+
+    modalForm.onsubmit = async e => {
+      e.preventDefault();
+      const data = {
+        companie: companie.value,
+        adresa: adresa.value,
+        telefon: telefon.value,
+        email: email.value
+      };
+
+      if (editCompanyId) {
+        await fetch(`/api/guests/${editCompanyId}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(data)
+        });
+      } else {
+        await fetch("/api/guests", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(data)
+        });
+      }
+      modal.classList.add("hidden");
+      loadCompanies();
+    };
+
+    async function editCompany(id) {
+      const c = companies.find(x => x.id === id);
+      if (!c) return;
+      companie.value = c.companie;
+      adresa.value = c.adresa;
+      telefon.value = c.telefon;
+      email.value = c.email;
+      editCompanyId = id;
+      modalTitle.textContent = "Edit Company";
+      modal.classList.remove("hidden");
+    }
+
+    async function deleteCompany(id) {
+      if (!confirm("Delete this company?")) return;
+      await fetch(`/api/guests/${id}`, { method: "DELETE" });
+      loadCompanies();
+    }
+
+    // === Person modal ===
+    function openAddPerson(companyId) {
+      currentCompanyId = companyId;
+      editPersonId = null;
+      personForm.reset();
+      personModalTitle.textContent = "Add Person";
+      personModal.classList.remove("hidden");
+    }
+
+    function openEditPerson(companyId, pid) {
+      currentCompanyId = companyId;
+      const c = companies.find(x => x.id === companyId);
+      const p = c?.persoane?.find(p => p.id === pid);
+      if (!p) return;
+      personName.value = p.nume;
+      personRole.value = p.functie || "";
+      personEmail.value = p.email || "";
+      personActive.checked = p.activ;
+      editPersonId = pid;
+      personModalTitle.textContent = "Edit Person";
+      personModal.classList.remove("hidden");
+    }
+
+    personCancelBtn.onclick = () => personModal.classList.add("hidden");
+
+    personForm.onsubmit = async e => {
+      e.preventDefault();
+      const data = {
+        nume: personName.value,
+        functie: personRole.value,
+        email: personEmail.value,
+        activ: personActive.checked
+      };
+
+      if (editPersonId) {
+        await fetch(`/api/guests/${currentCompanyId}/person/${editPersonId}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(data)
+        });
+      } else {
+        await fetch(`/api/guests/${currentCompanyId}/person`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(data)
+        });
+      }
+      personModal.classList.add("hidden");
+      loadCompanies();
+    };
+
+    async function deletePerson(companyId, pid) {
+      if (!confirm("Delete this person?")) return;
+      await fetch(`/api/guests/${companyId}/person/${pid}`, { method: "DELETE" });
+      loadCompanies();
+    }
+
+    async function toggleActive(companyId, pid) {
+      await fetch(`/api/guests/${companyId}/person/${pid}/toggle`, { method: "PATCH" });
+      loadCompanies();
+    }
+
+    loadCompanies();
+  </script>
+</body>
+</html>

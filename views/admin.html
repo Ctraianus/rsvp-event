@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Event Admin</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { background:#f8fafc; font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; }
+    .card { background:white; border-radius:12px; padding:16px; box-shadow:0 6px 18px rgba(15,23,42,0.06); }
+    .modal { position:fixed; inset:0; display:flex; align-items:center; justify-content:center; background:rgba(0,0,0,0.4); visibility:hidden; opacity:0; transition:all .18s ease; }
+    .modal.open { visibility:visible; opacity:1; }
+    .modal-content { width:100%; max-width:520px; background:white; padding:20px; border-radius:10px; }
+    .small { font-size:13px; color:#6b7280; }
+    .btn { transition:all .12s ease; }
+    .btn:hover { transform:translateY(-2px); }
+  </style>
+</head>
+<body class="p-6">
+
+  <header class="mb-6">
+    <h1 class="text-2xl font-bold">Event Manager — Admin</h1>
+    <p class="small mt-1">Manage companies, people, events and send invitations.</p>
+  </header>
+
+  <main class="grid lg:grid-cols-3 gap-6">
+    <!-- Companies -->
+    <section class="card lg:col-span-1">
+      <div class="flex justify-between items-center mb-3">
+        <h2 class="font-semibold">Companies</h2>
+        <button id="openAddCompany" class="bg-blue-600 text-white px-3 py-1 rounded btn">Add</button>
+      </div>
+      <div id="companiesList" class="space-y-3 max-h-[60vh] overflow:auto"></div>
+    </section>
+
+    <!-- Events -->
+    <section class="card lg:col-span-1">
+      <div class="flex justify-between items-center mb-3">
+        <h2 class="font-semibold">Events</h2>
+        <button id="openAddEvent" class="bg-green-600 text-white px-3 py-1 rounded btn">Add</button>
+      </div>
+      <div id="eventsList" class="space-y-3 max-h-[60vh] overflow:auto"></div>
+    </section>
+
+    <!-- Send -->
+    <section class="card lg:col-span-1">
+      <h2 class="font-semibold">Send Invitations</h2>
+      <p class="small mt-1 mb-3">Select an event and the recipients (checkboxes in companies list).</p>
+
+      <select id="sendEvent" class="border rounded p-2 w-full mb-3"></select>
+      <div class="flex gap-2">
+        <button id="sendBtn" class="bg-purple-600 text-white px-4 py-2 rounded btn">Send</button>
+        <button id="previewBtn" class="bg-gray-200 px-4 py-2 rounded">Preview Email</button>
+      </div>
+
+      <div class="mt-4 small" id="sendStatus"></div>
+    </section>
+  </main>
+
+  <!-- ########## MODALS ########## -->
+
+  <!-- Add/Edit Company -->
+  <div id="companyModal" class="modal">
+    <div class="modal-content">
+      <h3 class="font-semibold mb-2" id="companyModalTitle">Add Company</h3>
+      <form id="companyForm" class="space-y-2">
+        <input id="companyName" class="border p-2 w-full rounded" placeholder="Company name" required />
+        <input id="companyAddress" class="border p-2 w-full rounded" placeholder="Address" />
+        <input id="companyPhone" class="border p-2 w-full rounded" placeholder="Phone" />
+        <input id="companyEmail" class="border p-2 w-full rounded" placeholder="Contact email" />
+        <div class="flex gap-2">
+          <button class="bg-blue-600 text-white px-4 py-2 rounded">Save</button>
+          <button type="button" id="companyCancel" class="px-4 py-2 rounded border">Cancel</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Add/Edit Person -->
+  <div id="personModal" class="modal">
+    <div class="modal-content">
+      <h3 class="font-semibold mb-2" id="personModalTitle">Add Person</h3>
+      <form id="personForm" class="space-y-2">
+        <input id="personName" class="border p-2 w-full rounded" placeholder="Full name" required />
+        <input id="personRole" class="border p-2 w-full rounded" placeholder="Role/Position" />
+        <input id="personEmail" class="border p-2 w-full rounded" placeholder="Email" required />
+        <label class="flex items-center gap-2"><input id="personActive" type="checkbox" checked /> Active</label>
+        <div class="flex gap-2">
+          <button class="bg-blue-600 text-white px-4 py-2 rounded">Save</button>
+          <button type="button" id="personCancel" class="px-4 py-2 rounded border">Cancel</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Add/Edit Event -->
+  <div id="eventModal" class="modal">
+    <div class="modal-content">
+      <h3 class="font-semibold mb-2" id="eventModalTitle">Add Event</h3>
+      <form id="eventForm" class="space-y-2">
+        <input id="eventNameInput" class="border p-2 w-full rounded" placeholder="Event name" required />
+        <input id="eventDateInput" type="date" class="border p-2 w-full rounded" required />
+        <input id="eventTimeInput" type="time" class="border p-2 w-full rounded" required />
+        <input id="eventLocationInput" class="border p-2 w-full rounded" placeholder="Location" />
+        <textarea id="eventDescInput" class="border p-2 w-full rounded" placeholder="Description (optional)"></textarea>
+        <div class="flex gap-2">
+          <button class="bg-green-600 text-white px-4 py-2 rounded">Save</button>
+          <button type="button" id="eventCancel" class="px-4 py-2 rounded border">Cancel</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    // State
+    let companies = [];
+    let events = [];
+    let editingCompanyId = null;
+    let editingPersonCompanyId = null;
+    let editingPersonId = null;
+    let editingEventId = null;
+
+    // Elements
+    const companiesList = document.getElementById("companiesList");
+    const eventsList = document.getElementById("eventsList");
+    const sendEvent = document.getElementById("sendEvent");
+    const sendBtn = document.getElementById("sendBtn");
+    const sendStatus = document.getElementById("sendStatus");
+
+    // modals
+    const companyModal = document.getElementById("companyModal");
+    const personModal = document.getElementById("personModal");
+    const eventModal = document.getElementById("eventModal");
+
+    // forms
+    const companyForm = document.getElementById("companyForm");
+    const personForm = document.getElementById("personForm");
+    const eventForm = document.getElementById("eventForm");
+
+    // open buttons
+    document.getElementById("openAddCompany").onclick = () => openCompanyModal();
+    document.getElementById("openAddEvent").onclick = () => openEventModal();
+
+    // load initial data
+    async function loadAll() {
+      await loadCompanies();
+      await loadEvents();
+    }
+
+    // -------- Companies ----------
+    async function loadCompanies() {
+      const res = await fetch("/api/guests");
+      companies = await res.json();
+      renderCompanies();
+    }
+
+    function renderCompanies() {
+      companiesList.innerHTML = "";
+      companies.forEach(c => {
+        const el = document.createElement("div");
+        el.className = "p-3 border rounded";
+        el.innerHTML = `
+          <div class="flex justify-between items-start">
+            <div>
+              <div class="font-semibold">${escapeHtml(c.companie)}</div>
+              <div class="small">${escapeHtml(c.email || "")} • ${escapeHtml(c.telefon || "")}</div>
+            </div>
+            <div class="flex gap-2">
+              <button class="text-sm text-green-600" onclick="openPersonModal('${c.id}')">+ Person</button>
+              <button class="text-sm text-blue-600" onclick="openCompanyEdit('${c.id}')">Edit</button>
+              <button class="text-sm text-red-600" onclick="deleteCompany('${c.id}')">Delete</button>
+            </div>
+          </div>
+          <ul class="mt-2 space-y-1">
+            ${c.persoane.map(p => `
+              <li class="flex justify-between items-center small">
+                <span>${escapeHtml(p.nume)} — <em>${escapeHtml(p.functie)}</em> (${escapeHtml(p.email)})</span>
+                <div>
+                  <input type="checkbox" class="recipientCheckbox" data-email="${escapeHtml(p.email)}" ${p.activ ? "checked" : ""}/>
+                  <button class="text-xs ml-2 text-blue-600" onclick="openPersonEdit('${c.id}','${p.id}')">edit</button>
+                  <button class="text-xs ml-2 text-red-600" onclick="deletePerson('${c.id}','${p.id}')">del</button>
+                </div>
+              </li>`).join("")}
+          </ul>
+        `;
+        companiesList.appendChild(el);
+      });
+
+      // attach checkbox listeners
+      document.querySelectorAll(".recipientCheckbox").forEach(cb => {
+        cb.addEventListener("change", () => {
+          updateSelectedRecipients();
+        });
+      });
+    }
+
+    async function openCompanyModal() {
+      editingCompanyId = null;
+      document.getElementById("companyModalTitle").innerText = "Add Company";
+      companyForm.reset();
+      openModal(companyModal);
+    }
+    function openModal(mod) { mod.classList.add("open"); }
+    function closeModal(mod) { mod.classList.remove("open"); }
+
+    async function openCompanyEdit(id) {
+      editingCompanyId = id;
+      const company = companies.find(c => c.id === id);
+      document.getElementById("companyModalTitle").innerText = "Edit Company";
+      document.getElementById("companyName").value = company.companie || "";
+      document.getElementById("companyAddress").value = company.adresa || "";
+      document.getElementById("companyPhone").value = company.telefon || "";
+      document.getElementById("companyEmail").value = company.email || "";
+      openModal(companyModal);
+    }
+
+    companyForm.onsubmit = async e => {
+      e.preventDefault();
+      const body = {
+        companie: document.getElementById("companyName").value,
+        adresa: document.getElementById("companyAddress").value,
+        telefon: document.getElementById("companyPhone").value,
+        email: document.getElementById("companyEmail").value
+      };
+      if (editingCompanyId) {
+        await fetch(`/api/guests/${editingCompanyId}`, { method: "PUT", headers: {"Content-Type":"application/json"}, body: JSON.stringify(body) });
+      } else {
+        await fetch(`/api/guests`, { method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify(body) });
+      }
+      closeModal(companyModal);
+      await loadCompanies();
+    };
+
+    document.getElementById("companyCancel").onclick = () => closeModal(companyModal);
+
+    async function deleteCompany(id) {
+      if (!confirm("Delete this company?")) return;
+      await fetch(`/api/guests/${id}`, { method: "DELETE" });
+      await loadCompanies();
+    }
+
+    // -------- Persons ----------
+    function openPersonModal(companyId) {
+      editingPersonCompanyId = companyId;
+      editingPersonId = null;
+      document.getElementById("personModalTitle").innerText = "Add Person";
+      personForm.reset();
+      document.getElementById("personActive").checked = true;
+      openModal(personModal);
+    }
+    async function openPersonEdit(companyId, pid) {
+      editingPersonCompanyId = companyId;
+      editingPersonId = pid;
+      const c = companies.find(x => x.id === companyId);
+      const p = c.persoane.find(x => x.id === pid);
+      document.getElementById("personModalTitle").innerText = "Edit Person";
+      document.getElementById("personName").value = p.nume;
+      document.getElementById("personRole").value = p.functie;
+      document.getElementById("personEmail").value = p.email;
+      document.getElementById("personActive").checked = !!p.activ;
+      openModal(personModal);
+    }
+
+    personForm.onsubmit = async e => {
+      e.preventDefault();
+      const body = {
+        nume: document.getElementById("personName").value,
+        functie: document.getElementById("personRole").value,
+        email: document.getElementById("personEmail").value,
+        activ: document.getElementById("personActive").checked
+      };
+      if (editingPersonId) {
+        await fetch(`/api/guests/${editingPersonCompanyId}/person/${editingPersonId}`, { method: "PUT", headers: {"Content-Type":"application/json"}, body: JSON.stringify(body) });
+      } else {
+        await fetch(`/api/guests/${editingPersonCompanyId}/person`, { method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify(body) });
+      }
+      closeModal(personModal);
+      await loadCompanies();
+    };
+    document.getElementById("personCancel").onclick = () => closeModal(personModal);
+
+    async function deletePerson(companyId, pid) {
+      if (!confirm("Delete person?")) return;
+      await fetch(`/api/guests/${companyId}/person/${pid}`, { method: "DELETE" });
+      await loadCompanies();
+    }
+
+    // -------- Events ----------
+    async function loadEvents() {
+      const res = await fetch("/api/events");
+      events = await res.json();
+      renderEvents();
+      populateSendEvent();
+    }
+
+    function renderEvents() {
+      eventsList.innerHTML = "";
+      events.forEach(ev => {
+        const el = document.createElement("div");
+        el.className = "p-3 border rounded";
+        el.innerHTML = `
+          <div class="flex justify-between items-start">
+            <div>
+              <div class="font-semibold">${escapeHtml(ev.name)}</div>
+              <div class="small">${escapeHtml(ev.date)} ${escapeHtml(ev.time)} • ${escapeHtml(ev.location)}</div>
+            </div>
+            <div class="flex gap-2">
+              <button class="text-sm text-blue-600" onclick="openEventEdit('${ev.id}')">Edit</button>
+              <button class="text-sm text-red-600" onclick="deleteEvent('${ev.id}')">Delete</button>
+            </div>
+          </div>
+        `;
+        eventsList.appendChild(el);
+      });
+    }
+
+    function populateSendEvent() {
+      sendEvent.innerHTML = "<option value=''>-- Select event --</option>";
+      events.forEach(ev => {
+        const opt = document.createElement("option");
+        opt.value = ev.id;
+        opt.textContent = `${ev.name} — ${ev.date}`;
+        sendEvent.appendChild(opt);
+      });
+    }
+
+    document.getElementById("openAddEvent").onclick = () => openEventModal();
+    function openEventModal() {
+      editingEventId = null;
+      document.getElementById("eventModalTitle").innerText = "Add Event";
+      eventForm.reset();
+      openModal(eventModal);
+    }
+    function openEventEdit(id) {
+      editingEventId = id;
+      const ev = events.find(e => e.id === id);
+      document.getElementById("eventModalTitle").innerText = "Edit Event";
+      document.getElementById("eventNameInput").value = ev.name;
+      document.getElementById("eventDateInput").value = ev.date;
+      document.getElementById("eventTimeInput").value = ev.time;
+      document.getElementById("eventLocationInput").value = ev.location;
+      document.getElementById("eventDescInput").value = ev.description || "";
+      openModal(eventModal);
+    }
+
+    eventForm.onsubmit = async e => {
+      e.preventDefault();
+      const body = {
+        name: document.getElementById("eventNameInput").value,
+        date: document.getElementById("eventDateInput").value,
+        time: document.getElementById("eventTimeInput").value,
+        location: document.getElementById("eventLocationInput").value,
+        description: document.getElementById("eventDescInput").value
+      };
+      if (editingEventId) {
+        await fetch(`/api/events/${editingEventId}`, { method: "PUT", headers: {"Content-Type":"application/json"}, body: JSON.stringify(body) });
+      } else {
+        await fetch(`/api/events`, { method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify(body) });
+      }
+      closeModal(eventModal);
+      await loadEvents();
+    };
+
+    document.getElementById("eventCancel").onclick = () => closeModal(eventModal);
+
+    async function deleteEvent(id) {
+      if (!confirm("Delete event?")) return;
+      await fetch(`/api/events/${id}`, { method: "DELETE" });
+      await loadEvents();
+    }
+
+    // -------- Send invitations ----------
+    function updateSelectedRecipients() {
+      const boxes = Array.from(document.querySelectorAll(".recipientCheckbox"));
+      const emails = boxes.filter(b => b.checked).map(b => b.getAttribute("data-email")).filter(Boolean);
+      document.getElementById("sendStatus").innerText = `Selected recipients: ${emails.length}`;
+      return emails;
+    }
+
+    sendBtn.onclick = async () => {
+      const evId = sendEvent.value;
+      if (!evId) return alert("Select an event.");
+      const emails = updateSelectedRecipients();
+      if (emails.length === 0) return alert("Select at least one recipient.");
+      sendStatus.innerText = "Sending…";
+      const res = await fetch("/api/send", { method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify({ eventId: evId, emails }) });
+      const data = await res.json();
+      if (data.success) sendStatus.innerText = `Sent: ${data.sent}`;
+      else sendStatus.innerText = `Error: ${data.message || "unknown"}`;
+    };
+
+    document.getElementById("previewBtn").onclick = () => {
+      const evId = sendEvent.value;
+      if (!evId) return alert("Select an event.");
+      const ev = events.find(e => e.id === evId);
+      alert(`Preview:\n${ev.name}\n${ev.date} ${ev.time}\n${ev.location}`);
+    };
+
+    // Utilities
+    function escapeHtml(s) {
+      if (!s) return "";
+      return s.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
+    }
+
+    // init
+    loadAll();
+  </script>
+
+</body>
+</html>

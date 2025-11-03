@@ -1,0 +1,16 @@
+{
+  "name": "rsvp-event",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "server.js",
+  "dependencies": {
+    "body-parser": "^2.2.0",
+    "csv-writer": "^1.6.0",
+    "express": "^5.1.0",
+    "nodemailer": "^7.0.10",
+    "qrcode": "^1.5.4"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
+}

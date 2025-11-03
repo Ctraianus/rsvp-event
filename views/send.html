@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Send Invitations</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 min-h-screen">
+  <!-- Navbar -->
+  <nav class="bg-blue-600 text-white p-4 flex justify-between">
+    <h1 class="text-xl font-semibold">Invitation Manager</h1>
+    <div class="space-x-4">
+      <a href="guests.html" class="hover:underline">Guests</a>
+      <a href="send.html" class="hover:underline font-semibold">Send Emails</a>
+    </div>
+  </nav>
+
+  <main class="p-6">
+    <!-- Header -->
+    <div class="flex justify-between items-center mb-4">
+      <h2 class="text-2xl font-bold text-gray-800">Send Invitations</h2>
+      <p id="selectedCount" class="text-gray-600 text-sm">0 recipients selected</p>
+    </div>
+
+    <!-- Two-column layout -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <!-- Left column: Recipients -->
+      <div class="bg-white p-4 rounded-xl shadow overflow-y-auto max-h-[80vh]">
+        <h3 class="text-xl font-semibold mb-3 text-gray-800">Select Recipients</h3>
+        <div id="recipientList" class="space-y-3"></div>
+      </div>
+
+      <!-- Right column: Compose + Preview -->
+      <div class="bg-white p-6 rounded-xl shadow flex flex-col">
+         
+            <h3 class="text-xl font-semibold mb-4 text-gray-800">Select event</h3>
+
+         <select id="eventSelect"  class="w-full border p-2 rounded mb-4">
+            <option>Loading events...</option>
+         </select></br></br>
+
+              <h3 class="text-xl font-semibold mb-4 text-gray-800">Compose Email</h3>
+
+        <label class="block text-gray-700 mb-2">Subject:</label>
+        <input id="subject" type="text" class="w-full border p-2 rounded mb-4" placeholder="Invitation to our event" />
+
+        <label class="block text-gray-700 mb-2">Message:</label>
+        <textarea id="message" rows="8" class="w-full border p-2 rounded mb-4" placeholder="Dear {{name}},&#10;We are pleased to invite you to our event..."></textarea>
+
+        <div class="flex justify-between items-center">
+          <button id="previewBtn" class="bg-gray-200 px-4 py-2 rounded hover:bg-gray-300">Preview</button>
+          <button id="sendBtn" class="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700">Send</button>
+        </div>
+
+        <div id="previewSection" class="mt-6 hidden">
+          <h4 class="text-lg font-semibold mb-2 text-gray-800">Email Preview</h4>
+          <div id="previewContent" class="border rounded p-4 bg-gray-50 text-gray-700"></div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    const recipientList = document.getElementById("recipientList");
+    const selectedCount = document.getElementById("selectedCount");
+    const message = document.getElementById("message");
+    const subject = document.getElementById("subject");
+    const previewBtn = document.getElementById("previewBtn");
+    const previewSection = document.getElementById("previewSection");
+    const previewContent = document.getElementById("previewContent");
+    const sendBtn = document.getElementById("sendBtn");
+    const eventSelect = document.getElementById("eventSelect");
+
+    let guests = [];
+    let selected = new Map(); // store name + email
+
+    async function loadEvents() {
+  try {
+    const res = await fetch("/api/events");
+    const events = await res.json();
+
+    const select = document.getElementById("eventSelect");
+    select.innerHTML = events.length
+      ? events.map(ev => `<option value="${ev.id}">${ev.titlu} — ${ev.data}</option>`).join("")
+      : `<option value="">No events available</option>`;
+  } catch (err) {
+    console.error("Error loading events:", err);
+  }
+};
+
+    async function loadRecipients() {
+      try {
+        const res = await fetch("/api/guests");
+        guests = await res.json();
+        renderRecipients();
+      } catch (err) {
+        console.error("Error loading guests:", err);
+      }
+    }
+
+    function renderRecipients() {
+      recipientList.innerHTML = guests.map(c => `
+        <div class="border rounded-lg p-3">
+          <p class="font-semibold text-gray-800">${c.companie}</p>
+          <div class="mt-1 space-y-1">
+            ${(c.persoane || [])
+              .map(p => `
+                <label class="flex items-center space-x-2 text-sm text-gray-700">
+                  <input type="checkbox" value="${p.email}" data-name="${p.nume}" onchange="toggleSelection(this)" class="accent-blue-600"
+                    ${p.activ ? "checked" : ""} />
+                  <span>${p.nume} – ${p.email}</span>
+                </label>
+              `).join("")}
+          </div>
+        </div>
+      `).join("");
+
+      // initialize selected with all active ones
+      guests.forEach(c =>
+        (c.persoane || [])
+          .filter(p => p.activ)
+          .forEach(p => selected.set(p.email, p.nume))
+      );
+
+      updateSelectedCount();
+    }
+
+    function toggleSelection(checkbox) {
+      const email = checkbox.value;
+      const name = checkbox.dataset.name;
+      if (checkbox.checked) selected.set(email, name);
+      else selected.delete(email);
+      updateSelectedCount();
+    }
+
+    function updateSelectedCount() {
+      selectedCount.textContent = `${selected.size} recipient${selected.size !== 1 ? 's' : ''} selected`;
+    }
+
+previewBtn.onclick = () => {
+  const exampleName = "John Doe";
+  const exampleCompany = "Example Company";
+
+  const selectedEventId = eventSelect.value;
+  const selectedEvent = (window.loadedEvents || []).find(e => e.id === selectedEventId);
+  const evTitle = selectedEvent ? selectedEvent.titlu : "Our Event";
+  const evDate = selectedEvent?.data || "";
+  const evLocation = selectedEvent?.locatie || "";
+
+  // QR Code content (encoded text)
+  const qrData = encodeURIComponent(
+    `Name: ${exampleName}\nCompany: ${exampleCompany}\nEvent: ${evTitle}\nDate: ${evDate}`
+  );
+  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${qrData}`;
+
+  const personalizedMessage = message.value
+    .replace(/{{\s*name\s*}}/gi, exampleName)
+    .replace(/\n/g, "<br>");
+
+  const html = `
+  <div style="font-family:'Georgia',serif;background:#f9f9f9;padding:20px;display:flex;justify-content:center;">
+    <table style="max-width:600px;width:100%;background:white;border-radius:10px;overflow:hidden;box-shadow:0 2px 6px rgba(0,0,0,0.1);">
+      <tr>
+        <td style="text-align:center;padding:20px;">
+          <img src="https://newdelhi.mae.ro/sites/all/themes/mae_ek/images/logo.png"
+               alt="Embassy Logo"
+               style="max-width:160px;margin-bottom:15px;display:block;margin-left:auto;margin-right:auto;">
+          <h2 style="font-family:'Brush Script MT','Lucida Handwriting',cursive;font-size:28px;color:#1a1a1a;margin:10px 0;">
+            Invitation to ${evTitle}
+          </h2>
+          <p style="color:#555;font-size:14px;margin:0;">📅 ${evDate}<br>📍 ${evLocation}</p>
+        </td>
+      </tr>
+
+      <tr>
+        <td style="padding:25px 35px;color:#333;font-size:15px;line-height:1.6;">
+          ${personalizedMessage}
+        </td>
+      </tr>
+
+      <tr>
+       <td style="padding:20px;">
+  <div style="text-align:center;">
+    <div style="display:inline-block;text-align:center;">
+      <img src="${qrUrl}"
+           alt="QR Code"
+           style="display:block;margin:0 auto;margin-top:10px;
+                  max-width:150px;border:1px solid #eee;border-radius:8px;">
+      <p style="color:#777;font-size:13px;margin-top:6px;text-align:center;">
+        Scan for event details
+      </p>
+    </div>
+  </div>
+</td>
+
+      </tr>
+
+      <tr>
+        <td style="text-align:center;padding:20px;">
+          <a href="#" style="background:#2e7d32;color:white;text-decoration:none;
+             padding:12px 25px;border-radius:6px;font-weight:bold;margin-right:8px;
+             display:inline-block;">Confirm attendance</a>
+          <a href="#" style="background:#c62828;color:white;text-decoration:none;
+             padding:12px 25px;border-radius:6px;font-weight:bold;
+             display:inline-block;">Regretfully decline</a>
+        </td>
+      </tr>
+
+      <tr>
+        <td style="text-align:center;padding:15px;color:#999;font-size:12px;">
+          Embassy of Romania in New Delhi<br>
+          <span style="font-size:11px;">This is a preview of your invitation.</span>
+        </td>
+      </tr>
+    </table>
+  </div>
+  `;
+
+  previewContent.innerHTML = html;
+  previewSection.classList.remove("hidden");
+};
+
+
+
+    sendBtn.onclick = async () => {
+      if (selected.size === 0) {
+        alert("Please select at least one recipient.");
+        return;
+      }
+const eventId = document.getElementById("eventSelect")?.value || "";
+      const recipients = Array.from(selected.entries()).map(([email, name]) => ({ email, name }));
+
+      const payload = {
+        eventId, 
+        subject: subject.value,
+        message: message.value,
+        recipients
+      };
+
+      try {
+        const res = await fetch("/api/sendEmails", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+
+        if (!res.ok) {
+          const err = await res.text();
+          throw new Error(err || "Server error");
+        }
+
+        alert(`Emails sent to ${recipients.length} recipients.`);
+        selected.clear();
+        loadRecipients();
+        updateSelectedCount();
+      } catch (err) {
+        console.error("Error sending emails:", err);
+        alert("Failed to send emails. Check server console or network logs.");
+      }
+    };
+
+    loadRecipients();
+    loadEvents();
+  </script>
+</body>
+</html>
